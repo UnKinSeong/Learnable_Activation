@@ -127,6 +127,43 @@ def log_activation_stats(model, writer, step):
                 # ELU component
                 elu = torch.nn.functional.elu(x + module.bias[5], alpha=1.0)
                 components.append(('ELU', weights_softmax[5] * elu))
+
+                # SiLU component
+                silu = torch.nn.functional.silu(x + module.bias[6])
+                components.append(('SiLU', weights_softmax[6] * silu))
+
+                # GELU component
+                gelu = torch.nn.functional.gelu(x + module.bias[7])
+                components.append(('GELU', weights_softmax[7] * gelu))
+
+                # Mish component
+                mish = torch.nn.functional.mish(x + module.bias[8])
+                components.append(('Mish', weights_softmax[8] * mish))
+
+                # SELU component
+                selu = torch.nn.functional.selu(x + module.bias[9])
+                components.append(('SELU', weights_softmax[9] * selu))
+
+                # Softshrink component
+                softshrink = torch.nn.functional.softshrink(x + module.bias[10])
+                components.append(('Softshrink', weights_softmax[10] * softshrink))
+
+                # Tanhshrink component
+                tanhshrink = torch.nn.functional.tanhshrink(x + module.bias[11])
+                components.append(('Tanhshrink', weights_softmax[11] * tanhshrink))
+
+                # Softplus component
+                softplus = torch.nn.functional.softplus(x + module.bias[12])
+                components.append(('Softplus', weights_softmax[12] * softplus))
+
+                # PReLU component
+                prelu = torch.nn.functional.prelu(x + module.bias[13], torch.tensor(0.25).to(x.device))
+                components.append(('PReLU', weights_softmax[13] * prelu))
+
+                # Calculate average of all components
+                all_component_values = torch.stack([comp[1] for comp in components])
+                average = torch.mean(all_component_values, dim=0)
+                components.append(('Average', average))
                 
             # Create matplotlib figure
             fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))

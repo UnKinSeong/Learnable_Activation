@@ -17,41 +17,66 @@ checkpoint_filename = 'outputs/checkpoints/autoencoder_checkpoint.pth'
 start_epoch, saved_loss = load_checkpoint(
     model, optimizer, checkpoint_filename)
 
+activation = model.adaptive_activation
+parameters = fit_activation_parameters(activation, num_epochs=100000)
 
-activation_parameters = []
-
-# activation = model.adaptive_activation  # Get the specific activation you want to fit
-# a, b, c, d, e, f = fit_activation_parameters(activation, num_epochs=100000)
-# activation_parameters.append([a, b, c, d, e, f])
-
-# average the parameters
-# averaged_parameters = [sum(param[i] for param in activation_parameters) / len(activation_parameters) for i in range(6)]
-
-# After getting the averaged parameters, verify the output range
-x_test = torch.linspace(-1e5, 1e5, 100000000, device=device)
-# with torch.no_grad():
-#     y_fitted = parametric_activation(x_test, *averaged_parameters)
-#     print(f"Min output: {y_fitted.min().item():.4f}")
-#     print(f"Max output: {y_fitted.max().item():.4f}")
-
-# Modified plotting code to show the [0,1] range clearly
-x_test = torch.linspace(-10, 10, 100000, device=device)
-averaged_parameters = [0.7465469837188721, 0.18575870990753174, 0.24590235948562622, -0.024827823042869568, -0.5304253697395325, 2.4235410690307617]
-plt.figure(figsize=(10, 6))
+# Plot the results
+x_test = torch.linspace(-1e5, 1e5, 1000, device=device)
 with torch.no_grad():
-    y_fitted = parametric_activation(x_test, *averaged_parameters)
-    y_sigmoid = torch.sigmoid(x_test)  # Calculate sigmoid for comparison
+    y_fitted = parametric_activation(x_test, *parameters)
+    y_original = activation(x_test)
+    y_relu = F.relu(x_test)
+    y_sigmoid = torch.sigmoid(x_test)
     
-    plt.plot(x_test.cpu(), y_fitted.cpu(), '--', label='Fitted Function')
-    plt.plot(x_test.cpu(), y_sigmoid.cpu(), '-', label='Sigmoid Function')  # Plot sigmoid
-    plt.plot(x_test.cpu(), nn.ReLU()(x_test).cpu(), '--', label='ReLU Function')  # Plot relu
-
-    plt.axhline(y=0, color='r', linestyle=':')
-    plt.axhline(y=1, color='r', linestyle=':')
-    plt.ylim(-0.1, 1.1)  # Set y-axis limits to clearly show the [0,1] range
-    plt.legend()
+    plt.figure(figsize=(12, 12))
+    
+    # First subplot - Activation comparison
+    plt.subplot(2, 2, 1)
+    plt.plot(x_test.cpu(), y_fitted.detach().cpu(), label='Fitted')
+    plt.plot(x_test.cpu(), y_original.detach().cpu(), '--', label='Original')
+    plt.plot(x_test.cpu(), y_relu.cpu(), ':', label='ReLU')
+    plt.plot(x_test.cpu(), y_sigmoid.cpu(), '-.', label='Sigmoid')
     plt.grid(True)
-    plt.title('Fitted Activation (Normalized to [0,1]) and Sigmoid Comparison')
-    plt.show()
+    plt.legend()
+    plt.title('Activation Function Comparison')
 
-print(averaged_parameters)
+    # Second subplot - Component analysis
+    plt.subplot(2, 2, 2)
+    left_piece = parameters[0] * x_test + parameters[1]
+    right_piece = parameters[2] * x_test + parameters[3]
+    plt.plot(x_test.cpu(), left_piece.detach().cpu(), '--', label='Left Piece')
+    plt.plot(x_test.cpu(), right_piece.detach().cpu(), '--', label='Right Piece')
+    plt.plot(x_test.cpu(), y_fitted.detach().cpu(), label='Combined')
+    plt.plot(x_test.cpu(), y_original.detach().cpu(), '--', label='Original')
+    plt.axvline(x=parameters[4], color='k', linestyle=':', label='Transition Point')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Component Analysis')
+
+    # Third subplot - Zoomed view of activation functions
+    plt.subplot(2, 2, 3)
+    x_zoom = torch.linspace(-1e5, 1e5, 1000, device=device)
+    y_fitted_zoom = parametric_activation(x_zoom, *parameters)
+    y_relu_zoom = F.relu(x_zoom)
+    y_tanhshrink_zoom = torch.nn.functional.tanhshrink(x_zoom)
+    y_sigmoid_zoom = torch.sigmoid(x_zoom)
+    
+    plt.plot(x_zoom.cpu(), y_fitted_zoom.detach().cpu(), label='Fitted')
+    plt.plot(x_zoom.cpu(), y_relu_zoom.cpu(), ':', label='ReLU')
+    plt.plot(x_zoom.cpu(), y_sigmoid_zoom.cpu(), '--', label='Sigmoid')
+    plt.plot(x_zoom.cpu(), y_tanhshrink_zoom.cpu(), '-.', label='Tanhshrink')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Zoomed View (-10 to 10)')
+
+    # Fourth subplot - Original activation function
+    plt.subplot(2, 2, 4)
+    plt.plot(x_test.cpu(), y_original.detach().cpu(), label='Original Activation', color='orange')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Original Activation Function')
+
+plt.tight_layout()
+plt.show()
+
+print("Fitted parameters:", parameters)

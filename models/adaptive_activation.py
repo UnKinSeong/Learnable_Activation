@@ -33,19 +33,27 @@ class ParametricActivation(nn.Module):
 
 
 
-# optimal_parameters = [0.7465469837188721, 0.18575870990753174, 0.24590235948562622, -0.024827823042869568, -0.5304253697395325, 2.4235410690307617]
-def parametric_activation(x, a, b, c, d, e, f):
+# optimal_parameters = [0.15180999040603638, -0.14924363791942596, 1.002923846244812, -0.07417581230401993, -0.06182337552309036, 7.587813377380371]
+def parametric_activation(x, a1, b1, a2, b2, transition_point, smoothness):
     """
-    Normalized activation function that maps outputs between 0 and 1
-    Parameters remain the same but output is scaled and shifted
+    Piecewise activation function with smooth transition:
+    - Left side: a1*x + b1 (for x < transition_point)
+    - Right side: a2*x + b2 (for x > transition_point)
+    - Smooth transition around transition_point using sigmoid blending
+    
+    Args:
+        x: Input tensor
+        a1, b1: Slope and intercept for left piece
+        a2, b2: Slope and intercept for right piece
+        transition_point: Point where transition occurs
+        smoothness: Controls smoothness of transition
     """
-    positive_part = a * x + c * torch.pow(x, 2)
-    negative_part = b * x + d * torch.pow(x, 2) + e
+    left_piece = a1 * x + b1
+    right_piece = a2 * x + b2
     
-    # Smooth transition using sigmoid
-    sigmoid_weight = torch.sigmoid(f * x)
-    raw_output = sigmoid_weight * positive_part + (1 - sigmoid_weight) * negative_part
+    # blend = torch.sigmoid(smoothness * (x - transition_point))
     
-    # Normalize output to [0,1] using sigmoid
-    return raw_output
-    # return positive_part + negative_part
+    # return blend * right_piece + (1 - blend) * left_piece
+
+    # Simple threshold-based connection
+    return torch.where(x < transition_point, left_piece, right_piece)
